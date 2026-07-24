@@ -13,7 +13,7 @@ prompts/aime-system.txt
 Run a one-question smoke test:
 
 ```bash
-AIME_LIMIT=1 AIME_RUN_SLUG=aime24-system-prompt-smoke scripts/start_aime24_system_prompt_job.sh
+AIME_LIMIT=1 AIME_RUN_SLUG=aime24-answer-format-smoke scripts/start_aime24_system_prompt_job.sh
 ```
 
 Run the full five-model benchmark:
@@ -27,6 +27,15 @@ Check progress or summarize completed models:
 ```bash
 scripts/aime24_system_prompt_status.sh
 ```
+
+The default run slug is:
+
+```text
+aime24-answer-format-v2
+```
+
+The summary includes an automatic scan for likely answer-format false negatives
+in the saved sample logs.
 
 ## Expected Spark Setup
 
@@ -58,10 +67,10 @@ bench-glm47:q4
 
 ## GitHub Setup
 
-Create an empty private GitHub repo in the browser, then from this directory:
+Create an empty GitHub repo in the browser, then from this directory:
 
 ```bash
-git remote add origin git@github.com:YOUR_USER/local-ai-benchmarks.git
+git remote add origin git@github.com:ALumma/local-ai-benchmarks.git
 git branch -M main
 git push -u origin main
 ```
@@ -70,7 +79,7 @@ On the Spark, clone fresh:
 
 ```bash
 cd ~/Desktop
-git clone git@github.com:YOUR_USER/local-ai-benchmarks.git local-ai-benchmarks
+git clone https://github.com/ALumma/local-ai-benchmarks.git local-ai-benchmarks
 ```
 
 If `~/Desktop/local-ai-benchmarks` already exists on the Spark, keep it as a
@@ -79,7 +88,7 @@ runtime backup and copy the ignored local state into the fresh clone:
 ```bash
 cd ~/Desktop
 mv local-ai-benchmarks local-ai-benchmarks.local
-git clone git@github.com:YOUR_USER/local-ai-benchmarks.git local-ai-benchmarks
+git clone https://github.com/ALumma/local-ai-benchmarks.git local-ai-benchmarks
 cp -a local-ai-benchmarks.local/.venv local-ai-benchmarks/ 2>/dev/null || true
 cp -a local-ai-benchmarks.local/tools local-ai-benchmarks/ 2>/dev/null || true
 cp -a local-ai-benchmarks.local/results local-ai-benchmarks/ 2>/dev/null || true

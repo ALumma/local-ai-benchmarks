@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 
@@ -20,9 +21,69 @@ def latest_result(model_dir: Path) -> Path | None:
     return results[-1] if results else None
 
 
+def latest_samples(model_dir: Path) -> Path | None:
+    samples = sorted(model_dir.glob("samples_*.jsonl"))
+    return samples[-1] if samples else None
+
+
 def load_json(path: Path) -> dict:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def normalize_int(text: str | int | None) -> str | None:
+    if text is None:
+        return None
+    match = re.search(r"-?\d+", str(text).strip())
+    if not match:
+        return None
+    return str(int(match.group(0)))
+
+
+def boxed_values(text: str) -> list[str]:
+    return re.findall(r"\\boxed\{([^{}]+)\}", text)
+
+
+def likely_format_false_negatives(samples_path: Path | None) -> str:
+    if samples_path is None:
+        return "no samples"
+
+    boxed_target_but_wrong = 0
+    unboxed_final_target = 0
+    wrong = 0
+
+    with samples_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            sample = json.loads(line)
+            if int(sample.get("exact_match", 0)) == 1:
+                continue
+
+            wrong += 1
+            target = normalize_int(sample.get("target"))
+            response = (sample.get("filtered_resps") or [""])[0]
+            boxes = boxed_values(response)
+
+            if boxes and normalize_int(boxes[-1]) == target:
+                boxed_target_but_wrong += 1
+                continue
+
+            final_ints = re.findall(r"-?\d+", response[-300:])
+            if final_ints and normalize_int(final_ints[-1]) == target:
+                unboxed_final_target += 1
+
+    if wrong == 0:
+        return "0"
+
+    possible = boxed_target_but_wrong + unboxed_final_target
+    if possible == 0:
+        return "0 possible"
+
+    details = []
+    if boxed_target_but_wrong:
+        details.append(f"{boxed_target_but_wrong} boxed")
+    if unboxed_final_target:
+        details.append(f"{unboxed_final_target} unboxed")
+    return f"{possible} possible ({', '.join(details)})"
 
 
 def fmt_float(value: object, digits: int = 4) -> str:
@@ -36,7 +97,7 @@ def main() -> int:
     parser.add_argument(
         "run_dir",
         nargs="?",
-        default="results/aime/aime24-system-prompt-v1",
+        default="results/aime/aime24-answer-format-v2",
         help="Directory containing per-model lm-eval result folders.",
     )
     args = parser.parse_args()
@@ -64,7 +125,7 @@ def main() -> int:
                 fmt_float(accuracy),
                 fmt_float(result.get("exact_match_stderr,none")),
                 fmt_float(avg_seconds, 2),
-                "manual review not recorded",
+                likely_format_false_negatives(latest_samples(run_dir / model)),
             ]
         )
 
