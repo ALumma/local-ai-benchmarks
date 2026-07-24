@@ -28,6 +28,19 @@ Check progress or summarize completed models:
 scripts/aime24_system_prompt_status.sh
 ```
 
+Measure Qwen streaming performance on the saved AIME prompts:
+
+```bash
+python3 scripts/measure_ollama_chat_perf.py \
+  --model bench-qwen-next:q4 \
+  --run-dir results/aime/aime24-qwen-answer-format-v2 \
+  --limit 3
+```
+
+Remove `--limit 3` to replay all 30 prompts. This reports client-measured time
+to first token and continuing tokens per second, plus Ollama's server-side eval
+tokens per second.
+
 The default run slug is:
 
 ```text
