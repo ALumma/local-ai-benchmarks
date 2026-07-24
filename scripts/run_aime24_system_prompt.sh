@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 TASK="${AIME_TASK:-aime24}"
-RUN_SLUG="${AIME_RUN_SLUG:-aime24-system-prompt-v1}"
+RUN_SLUG="${AIME_RUN_SLUG:-aime24-answer-format-v2}"
 OUTPUT_ROOT="${AIME_OUTPUT_ROOT:-results/aime}"
 CACHE_ROOT="${AIME_CACHE_ROOT:-$OUTPUT_ROOT/$RUN_SLUG-cache}"
 PROMPT_FILE="${AIME_SYSTEM_PROMPT_FILE:-prompts/aime-system.txt}"

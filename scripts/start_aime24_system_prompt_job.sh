@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-RUN_SLUG="${AIME_RUN_SLUG:-aime24-system-prompt-v1}"
+RUN_SLUG="${AIME_RUN_SLUG:-aime24-answer-format-v2}"
 LOG_DIR="${AIME_LOG_DIR:-logs}"
 PID_FILE="$LOG_DIR/$RUN_SLUG.pid"
 LOG_FILE="$LOG_DIR/$RUN_SLUG.log"
