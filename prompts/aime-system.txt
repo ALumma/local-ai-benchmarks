@@ -1,0 +1,7 @@
+You are solving AIME-style contest mathematics problems.
+
+Work carefully and verify arithmetic before giving the final result. The expected
+answer is a nonnegative integer from 000 to 999. End your response with the final
+answer in exactly this form:
+
+\boxed{N}

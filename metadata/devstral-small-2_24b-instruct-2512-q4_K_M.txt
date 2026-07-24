@@ -1,0 +1,15 @@
+  Model
+    architecture        mistral3    
+    parameters          24.0B       
+    context length      393216      
+    embedding length    5120        
+    quantization        Q4_K_M      
+
+  Capabilities
+    completion    
+    vision        
+    tools         
+
+  Parameters
+    temperature    0.15    
+

@@ -1,0 +1,6 @@
+NAME                                         ID              SIZE     MODIFIED     
+glm-4.7-flash:q4_K_M                         4475827791a2    19 GB    47 hours ago    
+devstral-small-2:24b-instruct-2512-q4_K_M    24277f07f62d    15 GB    2 days ago      
+qwen3-coder-next:q4_K_M                      ca06e9e4087c    51 GB    2 days ago      
+gemma4:26b-a4b-it-q4_K_M                     5571076f3d70    17 GB    2 days ago      
+gemma4:31b-it-q4_K_M                         6316f0629137    19 GB    2 days ago      

@@ -1,0 +1,17 @@
+.DS_Store
+
+# Local Python/runtime state
+.venv/
+__pycache__/
+*.py[cod]
+
+# Benchmark outputs and long-running job logs
+results/
+logs/
+
+# External tool checkout; install/clone this on each machine.
+tools/lm-evaluation-harness/
+
+# Local caches
+.cache/
+*.db

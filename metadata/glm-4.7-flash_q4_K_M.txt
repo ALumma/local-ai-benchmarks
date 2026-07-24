@@ -1,0 +1,24 @@
+  Model
+    architecture        glm4moelite    
+    parameters          29.9B          
+    context length      202752         
+    embedding length    2048           
+    quantization        Q4_K_M         
+    requires            0.15.0         
+
+  Capabilities
+    completion    
+    tools         
+    thinking      
+
+  Parameters
+    min_p             0.01    
+    repeat_penalty    1       
+    temperature       1       
+    top_p             0.95    
+
+  License
+    MIT License                        
+    Copyright (c) [year] [fullname]    
+    ...                                
+
