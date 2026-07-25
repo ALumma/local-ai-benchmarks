@@ -54,6 +54,70 @@ Run the integrated benchmark for all five models:
 scripts/start_aime24_integrated_job.sh
 ```
 
+## Qwen3.6 35B A3B NVFP4/MTP
+
+Qwen3.6-35B-A3B is a 35B total / 3B active MoE model. The NVIDIA NVFP4
+checkpoint is intended for vLLM, not Ollama. Use the stable served model name
+below so reports group the result with the other benchmark aliases:
+
+```text
+bench-qwen36-35b-a3b-nvfp4-mtp
+```
+
+Serve the NVIDIA NVFP4 checkpoint on the Spark with vLLM:
+
+```bash
+vllm serve nvidia/Qwen3.6-35B-A3B-NVFP4 \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --served-model-name bench-qwen36-35b-a3b-nvfp4-mtp \
+  --tensor-parallel-size 1 \
+  --trust-remote-code \
+  --kv-cache-dtype fp8 \
+  --attention-backend flashinfer \
+  --moe-backend marlin \
+  --gpu-memory-utilization 0.4 \
+  --max-model-len 262144 \
+  --max-num-seqs 4 \
+  --max-num-batched-tokens 8192 \
+  --enable-chunked-prefill \
+  --async-scheduling \
+  --enable-prefix-caching \
+  --speculative-config '{"method":"mtp","num_speculative_tokens":3,"moe_backend":"triton"}' \
+  --load-format fastsafetensors \
+  --reasoning-parser qwen3 \
+  --tool-call-parser qwen3_xml \
+  --enable-auto-tool-choice
+```
+
+If vLLM rejects `--served-model-name`, remove that flag and run the benchmark
+with:
+
+```bash
+AIME_MODELS="nvidia/Qwen3.6-35B-A3B-NVFP4"
+```
+
+Smoke test through the OpenAI-compatible vLLM endpoint:
+
+```bash
+AIME_LIMIT=1 \
+AIME_RUN_SLUG=aime24-qwen36-nvfp4-mtp-smoke \
+scripts/start_aime24_integrated_openai_job.sh
+```
+
+Full AIME 24:
+
+```bash
+AIME_RUN_SLUG=aime24-qwen36-nvfp4-mtp-integrated-v1 \
+scripts/start_aime24_integrated_openai_job.sh
+```
+
+Check status with the same integrated status script:
+
+```bash
+AIME_RUN_SLUG=aime24-qwen36-nvfp4-mtp-integrated-v1 scripts/aime24_integrated_status.sh
+```
+
 Integrated output is stored together by run/model:
 
 ```text
@@ -138,6 +202,7 @@ bench-gemma26:q4
 bench-qwen-next:q4
 bench-devstral:q4
 bench-glm47:q4
+bench-qwen36-35b-a3b-nvfp4-mtp
 ```
 
 ## GitHub Setup

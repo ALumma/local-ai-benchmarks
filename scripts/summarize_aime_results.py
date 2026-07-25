@@ -13,6 +13,7 @@ MODELS = [
     "bench-qwen-next__q4",
     "bench-devstral__q4",
     "bench-glm47__q4",
+    "bench-qwen36-35b-a3b-nvfp4-mtp",
 ]
 
 
@@ -36,6 +37,14 @@ def load_perf_summary(model_dir: Path) -> dict:
     if not path.exists():
         return {}
     return load_json(path)
+
+
+def perf_gen_tps(perf: dict) -> object:
+    return (
+        perf.get("avg_ollama_eval_tokens_per_second")
+        or perf.get("avg_openai_completion_tokens_per_second")
+        or perf.get("avg_client_continuing_tokens_per_second")
+    )
 
 
 def normalize_int(text: str | int | None) -> str | None:
@@ -123,7 +132,7 @@ def main() -> int:
                     "",
                     "",
                     fmt_float(perf.get("avg_time_to_first_token_seconds"), 2),
-                    fmt_float(perf.get("avg_ollama_eval_tokens_per_second"), 2),
+                    fmt_float(perf_gen_tps(perf), 2),
                     fmt_float(perf.get("avg_prompt_eval_tokens_per_second"), 2),
                     "missing",
                 ]
@@ -147,7 +156,7 @@ def main() -> int:
                 fmt_float(result.get("exact_match_stderr,none")),
                 fmt_float(avg_seconds, 2),
                 fmt_float(perf.get("avg_time_to_first_token_seconds"), 2),
-                fmt_float(perf.get("avg_ollama_eval_tokens_per_second"), 2),
+                fmt_float(perf_gen_tps(perf), 2),
                 fmt_float(perf.get("avg_prompt_eval_tokens_per_second"), 2),
                 likely_format_false_negatives(latest_samples(run_dir / model)),
             ]

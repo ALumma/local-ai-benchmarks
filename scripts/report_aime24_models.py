@@ -16,6 +16,10 @@ KNOWN_MODELS = [
     ("bench-gemma26__q4", "bench-gemma26:q4"),
     ("bench-devstral__q4", "bench-devstral:q4"),
     ("bench-glm47__q4", "bench-glm47:q4"),
+    (
+        "bench-qwen36-35b-a3b-nvfp4-mtp",
+        "bench-qwen36-35b-a3b-nvfp4-mtp",
+    ),
 ]
 
 
@@ -33,6 +37,14 @@ def fmt_float(value: Any, digits: int = 2) -> str:
     if value is None or value == "":
         return ""
     return f"{float(value):.{digits}f}"
+
+
+def perf_gen_tps(perf: dict[str, Any]) -> Any:
+    return (
+        perf.get("avg_ollama_eval_tokens_per_second")
+        or perf.get("avg_openai_completion_tokens_per_second")
+        or perf.get("avg_client_continuing_tokens_per_second")
+    )
 
 
 def normalize_int(text: str | int | None) -> str | None:
@@ -181,6 +193,10 @@ def iter_result_records(
                 "avg_ollama_eval_tokens_per_second": perf.get(
                     "avg_ollama_eval_tokens_per_second"
                 ),
+                "avg_openai_completion_tokens_per_second": perf.get(
+                    "avg_openai_completion_tokens_per_second"
+                ),
+                "avg_generation_tokens_per_second": perf_gen_tps(perf),
                 "avg_prompt_eval_tokens_per_second": perf.get(
                     "avg_prompt_eval_tokens_per_second"
                 ),
@@ -236,6 +252,8 @@ def latest_records_by_model(
                     "avg_request_seconds": None,
                     "avg_ttft_seconds": None,
                     "avg_ollama_eval_tokens_per_second": None,
+                    "avg_openai_completion_tokens_per_second": None,
+                    "avg_generation_tokens_per_second": None,
                     "avg_prompt_eval_tokens_per_second": None,
                     "avg_load_seconds": None,
                     "avg_wall_seconds": None,
@@ -266,7 +284,7 @@ def sort_records(records: list[dict[str, Any]], sort_key: str) -> list[dict[str,
     if sort_key == "speed":
         return sorted(
             records,
-            key=lambda r: r.get("avg_ollama_eval_tokens_per_second") or -1,
+            key=lambda r: r.get("avg_generation_tokens_per_second") or -1,
             reverse=True,
         )
     return sorted(records, key=lambda r: r.get("exact_match") or -1, reverse=True)
@@ -303,7 +321,7 @@ def table_rows(records: list[dict[str, Any]], show_paths: bool) -> tuple[list[st
             fmt_float(record.get("total_minutes"), 1),
             fmt_float(record.get("avg_request_seconds"), 2),
             fmt_float(record.get("avg_ttft_seconds"), 2),
-            fmt_float(record.get("avg_ollama_eval_tokens_per_second"), 2),
+            fmt_float(record.get("avg_generation_tokens_per_second"), 2),
             fmt_float(record.get("avg_prompt_eval_tokens_per_second"), 2),
             fmt_float(record.get("avg_load_seconds"), 2),
             str(record.get("perf_samples") or ""),
