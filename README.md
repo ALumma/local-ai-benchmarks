@@ -10,25 +10,74 @@ Edit the system prompt here:
 prompts/aime-system.txt
 ```
 
-Run a one-question smoke test:
+Preferred path: run correctness and performance in the same `lm-eval` pass.
+
+Run a one-question integrated smoke test:
+
+```bash
+AIME_MODELS="bench-qwen-next:q4" \
+AIME_LIMIT=1 \
+AIME_RUN_SLUG=aime24-qwen-integrated-smoke \
+scripts/start_aime24_integrated_job.sh
+```
+
+Run full integrated AIME 24 for one model:
+
+```bash
+AIME_MODELS="bench-qwen-next:q4" \
+AIME_RUN_SLUG=aime24-qwen-integrated-v1 \
+scripts/start_aime24_integrated_job.sh
+```
+
+Check integrated progress/results:
+
+```bash
+AIME_RUN_SLUG=aime24-qwen-integrated-v1 scripts/aime24_integrated_status.sh
+```
+
+Run the integrated benchmark for all five models:
+
+```bash
+scripts/start_aime24_integrated_job.sh
+```
+
+Integrated output is stored together by run/model:
+
+```text
+results/aime/<run-slug>/<model>__<tag>/results_*.json
+results/aime/<run-slug>/<model>__<tag>/samples_aime24_*.jsonl
+results/aime/<run-slug>/<model>__<tag>/perf_integrated.jsonl
+results/aime/<run-slug>/<model>__<tag>/perf_integrated_summary.json
+logs/<run-slug>.log
+```
+
+The default integrated run slug is:
+
+```text
+aime24-integrated-answer-format-v1
+```
+
+Legacy two-pass path: run correctness first, then replay prompts for performance.
+
+Run a one-question correctness-only smoke test:
 
 ```bash
 AIME_LIMIT=1 AIME_RUN_SLUG=aime24-answer-format-smoke scripts/start_aime24_system_prompt_job.sh
 ```
 
-Run the full five-model benchmark:
+Run the full five-model correctness-only benchmark:
 
 ```bash
 scripts/start_aime24_system_prompt_job.sh
 ```
 
-Check progress or summarize completed models:
+Check correctness-only progress or summarize completed models:
 
 ```bash
 scripts/aime24_system_prompt_status.sh
 ```
 
-Measure Qwen streaming performance on the saved AIME prompts:
+Measure Qwen streaming performance by replaying saved AIME prompts:
 
 ```bash
 python3 scripts/measure_ollama_chat_perf.py \

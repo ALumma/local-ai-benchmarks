@@ -31,6 +31,13 @@ def load_json(path: Path) -> dict:
         return json.load(f)
 
 
+def load_perf_summary(model_dir: Path) -> dict:
+    path = model_dir / "perf_integrated_summary.json"
+    if not path.exists():
+        return {}
+    return load_json(path)
+
+
 def normalize_int(text: str | int | None) -> str | None:
     if text is None:
         return None
@@ -107,10 +114,24 @@ def main() -> int:
     for model in MODELS:
         result_path = latest_result(run_dir / model)
         if result_path is None:
-            rows.append([model, "", "", "", "", "missing"])
+            perf = load_perf_summary(run_dir / model)
+            rows.append(
+                [
+                    model,
+                    "",
+                    "",
+                    "",
+                    "",
+                    fmt_float(perf.get("avg_time_to_first_token_seconds"), 2),
+                    fmt_float(perf.get("avg_ollama_eval_tokens_per_second"), 2),
+                    fmt_float(perf.get("avg_prompt_eval_tokens_per_second"), 2),
+                    "missing",
+                ]
+            )
             continue
 
         data = load_json(result_path)
+        perf = load_perf_summary(run_dir / model)
         task_name = next(iter(data["results"]))
         result = data["results"][task_name]
         sample_len = int(result.get("sample_len") or data["n-samples"][task_name]["effective"])
@@ -125,6 +146,9 @@ def main() -> int:
                 fmt_float(accuracy),
                 fmt_float(result.get("exact_match_stderr,none")),
                 fmt_float(avg_seconds, 2),
+                fmt_float(perf.get("avg_time_to_first_token_seconds"), 2),
+                fmt_float(perf.get("avg_ollama_eval_tokens_per_second"), 2),
+                fmt_float(perf.get("avg_prompt_eval_tokens_per_second"), 2),
                 likely_format_false_negatives(latest_samples(run_dir / model)),
             ]
         )
@@ -135,6 +159,9 @@ def main() -> int:
         "Exact match",
         "Std err",
         "Avg sec/request",
+        "Avg TTFT",
+        "Avg gen tok/s",
+        "Avg prompt tok/s",
         "Parsing failures",
     ]
     widths = [
