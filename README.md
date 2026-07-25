@@ -35,6 +35,19 @@ Check integrated progress/results:
 AIME_RUN_SLUG=aime24-qwen-integrated-v1 scripts/aime24_integrated_status.sh
 ```
 
+Display the latest full AIME result for all five models:
+
+```bash
+python3 scripts/report_aime24_models.py
+```
+
+Include artifact paths or export CSV:
+
+```bash
+python3 scripts/report_aime24_models.py --paths
+python3 scripts/report_aime24_models.py --csv results/aime/aime24-model-report.csv
+```
+
 Run the integrated benchmark for all five models:
 
 ```bash
