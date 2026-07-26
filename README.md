@@ -134,6 +134,30 @@ The default integrated run slug is:
 aime24-integrated-answer-format-v1
 ```
 
+For thinking-capable Ollama models, control thinking with top-level `think` via:
+
+```bash
+OLLAMA_THINK=false
+```
+
+Example Qwen3.6 Ollama MTP Q4 run:
+
+```bash
+AIME_MODELS="bench-qwen36-35b-a3b-mtp-q4:latest" \
+AIME_RUN_SLUG=aime24-qwen36-mtp-q4-integrated-v1 \
+OLLAMA_THINK=false \
+scripts/start_aime24_integrated_job.sh
+```
+
+If a previous run used default thinking and produced empty answers, delete it
+before rerunning:
+
+```bash
+rm -rf results/aime/aime24-qwen36-mtp-q4-integrated-v1
+rm -f logs/aime24-qwen36-mtp-q4-integrated-v1.log
+rm -f logs/aime24-qwen36-mtp-q4-integrated-v1.pid
+```
+
 Legacy two-pass path: run correctness first, then replay prompts for performance.
 
 Run a one-question correctness-only smoke test:
@@ -203,6 +227,7 @@ bench-qwen-next:q4
 bench-devstral:q4
 bench-glm47:q4
 bench-qwen36-35b-a3b-nvfp4-mtp
+bench-qwen36-35b-a3b-mtp-q4:latest
 ```
 
 ## GitHub Setup

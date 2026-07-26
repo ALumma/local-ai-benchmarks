@@ -14,6 +14,7 @@ MODELS = [
     "bench-devstral__q4",
     "bench-glm47__q4",
     "bench-qwen36-35b-a3b-nvfp4-mtp",
+    "bench-qwen36-35b-a3b-mtp-q4__latest",
 ]
 
 
