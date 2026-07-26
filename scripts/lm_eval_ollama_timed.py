@@ -5,6 +5,7 @@ import copy
 import hashlib
 import json
 import logging
+import os
 import statistics
 import threading
 import time
@@ -46,6 +47,22 @@ def stable_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+def parse_think_value(value: Any) -> bool | str | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip()
+    if not text:
+        return None
+    lowered = text.lower()
+    if lowered in {"false", "0", "no", "off", "none"}:
+        return False
+    if lowered in {"true", "1", "yes", "on"}:
+        return True
+    return text
+
+
 @register_model("ollama-chat-timed")
 class TimedOllamaChatCompletion(LocalChatCompletion):
     """Ollama native streaming chat adapter with per-request timing logs.
@@ -59,11 +76,15 @@ class TimedOllamaChatCompletion(LocalChatCompletion):
         base_url: str = "http://127.0.0.1:11434/api/chat",
         perf_log_path: str | None = None,
         perf_summary_path: str | None = None,
+        think: bool | str | None = None,
         **kwargs,
     ):
         super().__init__(base_url=base_url, **kwargs)
         self.perf_log_path = Path(perf_log_path) if perf_log_path else None
         self.perf_summary_path = Path(perf_summary_path) if perf_summary_path else None
+        self.think = parse_think_value(
+            think if think is not None else os.environ.get("OLLAMA_THINK")
+        )
         self._perf_rows: list[dict[str, Any]] = []
         self._perf_lock = threading.Lock()
         self._request_index = 0
@@ -111,12 +132,15 @@ class TimedOllamaChatCompletion(LocalChatCompletion):
             "stop": list(stop)[:4],
         }
         options.update(gen_kwargs)
-        return {
+        payload = {
             "model": self.model,
             "messages": messages,
             "stream": True,
             "options": options,
         }
+        if self.think is not None:
+            payload["think"] = self.think
+        return payload
 
     def model_call(
         self,
@@ -236,6 +260,7 @@ class TimedOllamaChatCompletion(LocalChatCompletion):
             "request_index": request_index,
             "started_at": started_at,
             "model": payload["model"],
+            "think": payload.get("think"),
             "messages_sha256": hashlib.sha256(
                 stable_json(messages).encode("utf-8")
             ).hexdigest(),

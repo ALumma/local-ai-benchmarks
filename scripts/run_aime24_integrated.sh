@@ -14,6 +14,10 @@ MAX_GEN_TOKS="${AIME_MAX_GEN_TOKS:-4096}"
 NUM_CONCURRENT="${AIME_NUM_CONCURRENT:-1}"
 MAX_RETRIES="${AIME_MAX_RETRIES:-3}"
 BATCH_SIZE="${AIME_BATCH_SIZE:-1}"
+THINK_ARG=""
+if [[ -n "${OLLAMA_THINK:-}" ]]; then
+  THINK_ARG=",think=$OLLAMA_THINK"
+fi
 
 if [[ -x ".venv/bin/python" ]]; then
   PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
@@ -62,7 +66,7 @@ for model in "${MODELS[@]}"; do
   echo "==> Running integrated $TASK accuracy+performance for $model"
   "$PYTHON_BIN" scripts/lm_eval_ollama_timed.py run \
     --model ollama-chat-timed \
-    --model_args "model=$model,base_url=$BASE_URL,num_concurrent=$NUM_CONCURRENT,max_retries=$MAX_RETRIES,perf_log_path=$perf_log_path,perf_summary_path=$perf_summary_path" \
+    --model_args "model=$model,base_url=$BASE_URL,num_concurrent=$NUM_CONCURRENT,max_retries=$MAX_RETRIES,perf_log_path=$perf_log_path,perf_summary_path=$perf_summary_path$THINK_ARG" \
     --tasks "$TASK" \
     --apply_chat_template \
     --system_instruction "$SYSTEM_INSTRUCTION" \
