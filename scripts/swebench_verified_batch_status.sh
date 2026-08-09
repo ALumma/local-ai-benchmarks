@@ -11,15 +11,15 @@ sanitize_name() {
   printf '%s\n' "$value"
 }
 
-RUN_SLUG="${SWEBENCH_RUN_SLUG:-swebench-verified-qwen36-nvfp4-comparison-v1}"
+BATCH_SLUG="${SWEBENCH_BATCH_SLUG:-swebench-verified-50-qwen36-nvfp4-v1}"
 MODEL_NAME="${SWEBENCH_MODEL_NAME:-bench-qwen36-35b-a3b-nvfp4-mtp}"
 MODEL_SLUG="$(sanitize_name "$MODEL_NAME")"
-OUTPUT_ROOT="${SWEBENCH_OUTPUT_ROOT:-results/swebench}"
+OUTPUT_ROOT="${SWEBENCH_BATCH_OUTPUT_ROOT:-results/swebench-batches}"
 LOG_DIR="${SWEBENCH_LOG_DIR:-logs}"
-JOB_NAME="${SWEBENCH_JOB_NAME:-swebench-${RUN_SLUG}-${MODEL_SLUG}}"
+JOB_NAME="${SWEBENCH_JOB_NAME:-swebench-batch-${BATCH_SLUG}-${MODEL_SLUG}}"
 PID_FILE="$LOG_DIR/$JOB_NAME.pid"
 LOG_FILE="$LOG_DIR/$JOB_NAME.log"
-MODEL_DIR="$OUTPUT_ROOT/$RUN_SLUG/$MODEL_SLUG"
+BATCH_ROOT="$OUTPUT_ROOT/$BATCH_SLUG"
 
 if [[ -f "$PID_FILE" ]]; then
   pid="$(<"$PID_FILE")"
@@ -33,18 +33,17 @@ else
 fi
 
 echo
-echo "Latest SWE-bench summary:"
-python3 scripts/report_swebench_results.py \
+echo "Latest batch summary:"
+python3 scripts/report_swebench_batch.py \
   --root "$OUTPUT_ROOT" \
-  --run "$RUN_SLUG" \
-  --paths || true
+  --batch "$BATCH_SLUG" || true
 
 if [[ -f "$LOG_FILE" ]]; then
   echo
-  echo "Last 80 job log lines:"
-  tail -n 80 "$LOG_FILE"
+  echo "Last 100 job log lines:"
+  tail -n 100 "$LOG_FILE"
 fi
 
 echo
-echo "Artifacts:"
-find "$MODEL_DIR" -maxdepth 5 -type f 2>/dev/null | sort || true
+echo "Batch artifacts:"
+find "$BATCH_ROOT" -maxdepth 3 -type f 2>/dev/null | sort || true

@@ -440,7 +440,10 @@ fi
 if [[ "$run_status" == "0" ]]; then
   write_metadata "completed" 0
   echo "==> Done. Summary:"
-  "$PYTHON_BIN" scripts/report_swebench_results.py --run "$SWEBENCH_RUN_SLUG" --model "$SWEBENCH_MODEL_NAME"
+  "$PYTHON_BIN" scripts/report_swebench_results.py \
+    --root "$SWEBENCH_OUTPUT_ROOT" \
+    --run "$SWEBENCH_RUN_SLUG" \
+    --model "$SWEBENCH_MODEL_NAME"
 else
   write_metadata "failed" "$run_status"
   echo "==> Failed with exit code $run_status" >&2
