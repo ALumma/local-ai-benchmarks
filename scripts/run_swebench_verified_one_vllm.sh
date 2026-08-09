@@ -13,14 +13,17 @@ if [[ -n "${PYTHON_BIN:-}" ]]; then
   fi
 fi
 if [[ -z "${PYTHON_BIN:-}" ]]; then
-  if [[ -x ".venv/bin/python" ]]; then
-    PYTHON_BIN=".venv/bin/python"
+  if [[ -x "$ROOT_DIR/.venv/bin/python" ]]; then
+    PYTHON_BIN="$ROOT_DIR/.venv/bin/python"
   elif command -v python3 >/dev/null 2>&1; then
     PYTHON_BIN="python3"
   else
     echo "Python interpreter not found. Create .venv or install python3." >&2
     exit 1
   fi
+fi
+if [[ "$PYTHON_BIN" == */* && "$PYTHON_BIN" != /* ]]; then
+  PYTHON_BIN="$ROOT_DIR/$PYTHON_BIN"
 fi
 
 sanitize_name() {
