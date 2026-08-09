@@ -4,10 +4,23 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-if [[ -x ".venv/bin/python" ]]; then
-  PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
-else
-  PYTHON_BIN="${PYTHON_BIN:-python3}"
+if [[ -n "${PYTHON_BIN:-}" ]]; then
+  if [[ -x "$PYTHON_BIN" ]] || command -v "$PYTHON_BIN" >/dev/null 2>&1; then
+    :
+  else
+    echo "Ignoring invalid PYTHON_BIN=$PYTHON_BIN" >&2
+    unset PYTHON_BIN
+  fi
+fi
+if [[ -z "${PYTHON_BIN:-}" ]]; then
+  if [[ -x ".venv/bin/python" ]]; then
+    PYTHON_BIN=".venv/bin/python"
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+  else
+    echo "Python interpreter not found. Create .venv or install python3." >&2
+    exit 1
+  fi
 fi
 
 : "${SWEBENCH_DATASET:=princeton-nlp/SWE-bench_Verified}"
