@@ -303,6 +303,63 @@ OpenAI-compatible vLLM path by default. Override it with
 `SWEBENCH_THINKING=true` only when you intentionally want to compare thinking
 mode behavior.
 
+### Fixed 50-Task Batch
+
+The batch runner creates one deterministic 50-task manifest, includes the
+validated `django__django-11099` task, and selects the other 49 by a stable hash
+with seed `20260809`. It runs sequentially at concurrency one. Completed tasks
+are skipped when the same command is restarted, while task-specific failures
+are recorded and the batch continues.
+
+Run NVIDIA first:
+
+```bash
+SWEBENCH_BATCH_SLUG=swebench-verified-50-qwen36-nvfp4-v1 \
+SWEBENCH_BATCH_COUNT=50 \
+SWEBENCH_BATCH_SEED=20260809 \
+SWEBENCH_MODEL_PROFILE=nvidia-nvfp4 \
+SWEBENCH_MODEL_NAME=bench-qwen36-35b-a3b-nvfp4-mtp \
+scripts/start_swebench_verified_batch_job.sh
+```
+
+Check status:
+
+```bash
+SWEBENCH_BATCH_SLUG=swebench-verified-50-qwen36-nvfp4-v1 \
+SWEBENCH_MODEL_NAME=bench-qwen36-35b-a3b-nvfp4-mtp \
+scripts/swebench_verified_batch_status.sh
+```
+
+After NVIDIA finishes, switch the vLLM server to Unsloth and reuse the exact
+same manifest:
+
+```bash
+SWEBENCH_BATCH_SLUG=swebench-verified-50-qwen36-nvfp4-v1 \
+SWEBENCH_BATCH_COUNT=50 \
+SWEBENCH_BATCH_SEED=20260809 \
+SWEBENCH_MODEL_PROFILE=unsloth-dynamic-nvfp4 \
+SWEBENCH_MODEL_NAME=bench-qwen36-35b-a3b-unsloth-dynamic-nvfp4-mtp \
+scripts/start_swebench_verified_batch_job.sh
+```
+
+Display aggregate accuracy or all task rows:
+
+```bash
+python3 scripts/report_swebench_batch.py \
+  --batch swebench-verified-50-qwen36-nvfp4-v1
+
+python3 scripts/report_swebench_batch.py \
+  --batch swebench-verified-50-qwen36-nvfp4-v1 \
+  --instances
+```
+
+Batch artifacts are stored under
+`results/swebench-batches/<batch-slug>/`. The manifest is shared by both model
+runs; per-task outputs remain separate under `runs/<instance>/<model>/`. The
+first model builds uncached Docker images, so use the batch primarily for
+correctness rather than direct timing comparisons. Expect the run to take
+several hours and consume substantial Docker storage.
+
 ## Expected Spark Setup
 
 From `~/Desktop/local-ai-benchmarks` on the Spark:
