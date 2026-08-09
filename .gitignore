@@ -11,6 +11,7 @@ logs/
 
 # External tool checkout; install/clone this on each machine.
 tools/lm-evaluation-harness/
+tools/SWE-bench/
 
 # Local caches
 .cache/
