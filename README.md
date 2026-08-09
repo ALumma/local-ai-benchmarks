@@ -221,6 +221,9 @@ Run the gold-patch smoke test once before running model predictions:
 scripts/swebench_verified_gold_check.sh
 ```
 
+The gold check ignores the known stale SymPy `1.7` branch hint, clones the
+available repository history, and still resets to the exact benchmark commit.
+
 On ARM64 hosts, the gold check and one-task runner force SWE-bench image
 generation to `arm64` and use `--namespace none`, which makes SWE-bench build
 local images instead of pulling x86_64 images. Cached Conda environment files

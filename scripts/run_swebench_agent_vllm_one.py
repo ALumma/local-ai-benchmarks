@@ -13,6 +13,7 @@ from swebench_docker_platform import (
     docker_platform_for_arch,
     ensure_ubuntu_base_image,
 )
+from swebench_repo_setup import remove_stale_repo_branch_hint
 
 
 LOGGER = logging.getLogger("run_swebench_agent_vllm_one")
@@ -53,6 +54,10 @@ def ensure_instance_image(
             "Adapted %d Conda package pins for ARM64 in %s.",
             changes,
             test_spec.instance_id,
+        )
+    if remove_stale_repo_branch_hint(test_spec):
+        LOGGER.info(
+            "Removed stale repository branch hint for %s.", test_spec.instance_id
         )
     existing = client.images.list(name=test_spec.instance_image_key)
     if existing and not force_rebuild:

@@ -7,6 +7,7 @@ from typing import Any
 
 from swebench_arm64 import adapt_test_spec_for_arm64
 from swebench_docker_platform import ensure_ubuntu_base_image
+from swebench_repo_setup import remove_stale_repo_branch_hint
 
 
 def normalize_namespace(value: str | None) -> str | None:
@@ -43,6 +44,8 @@ def patch_swebench_arch(arch: str) -> None:
                 f"Adapted {changes} Conda package pins for ARM64 in "
                 f"{test_spec.instance_id}."
             )
+        if remove_stale_repo_branch_hint(test_spec):
+            print(f"Removed stale repository branch hint for {test_spec.instance_id}.")
         return test_spec
 
     test_spec_module.make_test_spec = make_test_spec_with_arch
