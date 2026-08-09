@@ -200,6 +200,106 @@ aime24-answer-format-v2
 The summary includes an automatic scan for likely answer-format false negatives
 in the saved sample logs.
 
+## SWE-bench Verified With vLLM
+
+SWE-bench support is split into the two official phases:
+
+1. `mini-swe-agent` generates a patch prediction through the local
+   OpenAI-compatible vLLM endpoint.
+2. The SWE-bench harness applies that patch in Docker and records whether the
+   Verified task is resolved.
+
+Install the SWE-bench tools on the machine that will run Docker:
+
+```bash
+scripts/setup_swebench_tools.sh
+```
+
+Run the official gold-patch smoke test once before running model predictions:
+
+```bash
+.venv/bin/python -m swebench.harness.run_evaluation \
+  --predictions_path gold \
+  --max_workers 1 \
+  --instance_ids sympy__sympy-20590 \
+  --run_id validate-gold
+```
+
+On ARM64 hosts, the one-task runner defaults the official evaluation harness to
+`--namespace none`, which makes SWE-bench build local images instead of pulling
+x86_64 images. `mini-swe-agent` still uses SWE-bench Docker environments during
+trajectory generation; if Docker cannot run those images on the Spark, generate
+or evaluate on an x86_64 Docker host and point it at the Spark's vLLM endpoint.
+
+The default comparison task is the mini-SWE-agent documented Verified example:
+
+```text
+django__django-11099
+```
+
+Run NVIDIA first with the matching serving profile active:
+
+```bash
+cd ~/Desktop/local-ai-serving
+MODEL_PROFILE=nvidia-nvfp4 ./scripts/serve_qwen36_nvfp4_mtp.sh
+MODEL_PROFILE=nvidia-nvfp4 ./scripts/wait_for_server.sh
+
+cd ~/Desktop/local-ai-benchmarks
+SWEBENCH_MODEL_PROFILE=nvidia-nvfp4 \
+SWEBENCH_MODEL_NAME=bench-qwen36-35b-a3b-nvfp4-mtp \
+SWEBENCH_INSTANCE_ID=django__django-11099 \
+SWEBENCH_RUN_SLUG=swebench-verified-qwen36-nvfp4-comparison-v1 \
+scripts/start_swebench_verified_one_job.sh
+```
+
+Check progress:
+
+```bash
+SWEBENCH_MODEL_NAME=bench-qwen36-35b-a3b-nvfp4-mtp \
+SWEBENCH_RUN_SLUG=swebench-verified-qwen36-nvfp4-comparison-v1 \
+scripts/swebench_verified_status.sh
+```
+
+Then stop NVIDIA, start Unsloth, and run the identical task and run slug:
+
+```bash
+cd ~/Desktop/local-ai-serving
+MODEL_PROFILE=nvidia-nvfp4 ./scripts/stop_server.sh
+MODEL_PROFILE=unsloth-dynamic-nvfp4 ./scripts/serve_qwen36_nvfp4_mtp.sh
+MODEL_PROFILE=unsloth-dynamic-nvfp4 ./scripts/wait_for_server.sh
+
+cd ~/Desktop/local-ai-benchmarks
+SWEBENCH_MODEL_PROFILE=unsloth-dynamic-nvfp4 \
+SWEBENCH_MODEL_NAME=bench-qwen36-35b-a3b-unsloth-dynamic-nvfp4-mtp \
+SWEBENCH_INSTANCE_ID=django__django-11099 \
+SWEBENCH_RUN_SLUG=swebench-verified-qwen36-nvfp4-comparison-v1 \
+scripts/start_swebench_verified_one_job.sh
+```
+
+Display both rows:
+
+```bash
+python3 scripts/report_swebench_results.py \
+  --run swebench-verified-qwen36-nvfp4-comparison-v1 \
+  --paths
+```
+
+Artifacts are kept under:
+
+```text
+results/swebench/<run-slug>/<model>/
+results/swebench/<run-slug>/<model>/agent/preds.json
+results/swebench/<run-slug>/<model>/agent/<instance>/<instance>.traj.json
+results/swebench/<run-slug>/<model>/evaluation/
+results/swebench/<run-slug>/<model>/run_metadata.json
+logs/swebench-<run-slug>-<model>.log
+```
+
+The runner sends `chat_template_kwargs.enable_thinking=false` through LiteLLM's
+OpenAI-compatible vLLM path by default. Override it with
+`SWEBENCH_THINKING=true` only when you intentionally want to compare thinking
+mode behavior.
+
 ## Expected Spark Setup
 
 From `~/Desktop/local-ai-benchmarks` on the Spark:
@@ -210,6 +310,7 @@ source .venv/bin/activate
 python -m pip install --upgrade pip wheel setuptools
 git clone https://github.com/EleutherAI/lm-evaluation-harness.git tools/lm-evaluation-harness
 python -m pip install -e "tools/lm-evaluation-harness[api]"
+scripts/setup_swebench_tools.sh
 ```
 
 Ollama should be running locally on the Spark at:
