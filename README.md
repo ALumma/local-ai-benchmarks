@@ -215,21 +215,16 @@ Install the SWE-bench tools on the machine that will run Docker:
 scripts/setup_swebench_tools.sh
 ```
 
-Run the official gold-patch smoke test once before running model predictions:
+Run the gold-patch smoke test once before running model predictions:
 
 ```bash
-.venv/bin/python -m swebench.harness.run_evaluation \
-  --predictions_path gold \
-  --max_workers 1 \
-  --instance_ids sympy__sympy-20590 \
-  --run_id validate-gold
+scripts/swebench_verified_gold_check.sh
 ```
 
-On ARM64 hosts, the one-task runner defaults the official evaluation harness to
-`--namespace none`, which makes SWE-bench build local images instead of pulling
-x86_64 images. `mini-swe-agent` still uses SWE-bench Docker environments during
-trajectory generation; if Docker cannot run those images on the Spark, generate
-or evaluate on an x86_64 Docker host and point it at the Spark's vLLM endpoint.
+On ARM64 hosts, the gold check and one-task runner force SWE-bench image
+generation to `arm64` and use `--namespace none`, which makes SWE-bench build
+local images instead of pulling x86_64 images. Override with
+`SWEBENCH_EVAL_ARCH=x86_64` only when you intentionally want Docker emulation.
 
 The default comparison task is the mini-SWE-agent documented Verified example:
 

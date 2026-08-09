@@ -10,12 +10,6 @@ else
   PYTHON_BIN="${PYTHON_BIN:-python3}"
 fi
 
-if [[ -x ".venv/bin/mini-extra" ]]; then
-  MINI_EXTRA_BIN="${MINI_EXTRA_BIN:-.venv/bin/mini-extra}"
-else
-  MINI_EXTRA_BIN="${MINI_EXTRA_BIN:-mini-extra}"
-fi
-
 sanitize_name() {
   local value="$1"
   value="${value//:/__}"
@@ -63,15 +57,21 @@ require_command() {
 : "${SWEBENCH_EVAL_CLEAN:=False}"
 : "${SWEBENCH_SKIP_AGENT:=0}"
 : "${SWEBENCH_SKIP_EVAL:=0}"
-: "${SWEBENCH_REDO_AGENT:=1}"
 : "${SWEBENCH_REWRITE_EVAL_REPORTS:=False}"
 : "${SWEBENCH_DOCKER_PULL_TIMEOUT:=1800}"
 : "${SWEBENCH_ENV_COMMAND_TIMEOUT:=60}"
+: "${SWEBENCH_FORCE_REBUILD_IMAGES:=0}"
 
 if [[ -z "${SWEBENCH_EVAL_NAMESPACE+x}" ]]; then
   case "$(uname -m)" in
     arm64|aarch64) SWEBENCH_EVAL_NAMESPACE="none" ;;
     *) SWEBENCH_EVAL_NAMESPACE="swebench" ;;
+  esac
+fi
+if [[ -z "${SWEBENCH_EVAL_ARCH+x}" ]]; then
+  case "$(uname -m)" in
+    arm64|aarch64) SWEBENCH_EVAL_ARCH="arm64" ;;
+    *) SWEBENCH_EVAL_ARCH="x86_64" ;;
   esac
 fi
 
@@ -82,7 +82,7 @@ RUN_DIR="$ROOT_DIR/$SWEBENCH_OUTPUT_ROOT/$SWEBENCH_RUN_SLUG"
 MODEL_DIR="$RUN_DIR/$MODEL_SLUG"
 AGENT_DIR="$MODEL_DIR/agent"
 EVAL_DIR="$MODEL_DIR/evaluation"
-CONFIG_PATH="$MODEL_DIR/minisweagent_vllm_config.json"
+CONFIG_PATH="$MODEL_DIR/minisweagent_vllm_config.yaml"
 REGISTRY_PATH="$MODEL_DIR/litellm_registry.json"
 METADATA_PATH="$MODEL_DIR/run_metadata.json"
 PREDICTIONS_PATH="$AGENT_DIR/preds.json"
@@ -98,12 +98,8 @@ EVAL_SECONDS=""
 mkdir -p "$AGENT_DIR" "$EVAL_DIR"
 
 require_command "$PYTHON_BIN" || exit 1
-require_command "$MINI_EXTRA_BIN" || {
-  echo "Run scripts/setup_swebench_tools.sh first." >&2
-  exit 1
-}
 require_command curl || exit 1
-if [[ "$SWEBENCH_SKIP_EVAL" != "1" || "$SWEBENCH_MINI_ENVIRONMENT_CLASS" == "docker" ]]; then
+if [[ "$SWEBENCH_SKIP_EVAL" != "1" || "$SWEBENCH_SKIP_AGENT" != "1" ]]; then
   require_command docker || exit 1
 fi
 
@@ -111,7 +107,7 @@ fi
 import importlib.util
 missing = [
     name
-    for name in ("minisweagent", "datasets")
+    for name in ("minisweagent", "datasets", "swebench", "docker")
     if importlib.util.find_spec(name) is None
 ]
 if missing:
@@ -245,6 +241,7 @@ write_metadata() {
   SWEBENCH_THINKING="$SWEBENCH_THINKING" \
   SWEBENCH_MINI_ENVIRONMENT_CLASS="$SWEBENCH_MINI_ENVIRONMENT_CLASS" \
   SWEBENCH_EVAL_NAMESPACE="$SWEBENCH_EVAL_NAMESPACE" \
+  SWEBENCH_EVAL_ARCH="$SWEBENCH_EVAL_ARCH" \
   SWEBENCH_EVAL_CACHE_LEVEL="$SWEBENCH_EVAL_CACHE_LEVEL" \
   SWEBENCH_EVAL_TIMEOUT="$SWEBENCH_EVAL_TIMEOUT" \
   AGENT_SECONDS="$AGENT_SECONDS" \
@@ -291,6 +288,7 @@ payload = {
         "thinking": os.environ["SWEBENCH_THINKING"],
         "mini_environment_class": os.environ["SWEBENCH_MINI_ENVIRONMENT_CLASS"],
         "eval_namespace": os.environ["SWEBENCH_EVAL_NAMESPACE"],
+        "eval_arch": os.environ["SWEBENCH_EVAL_ARCH"],
         "eval_cache_level": os.environ["SWEBENCH_EVAL_CACHE_LEVEL"],
         "eval_timeout": int(os.environ["SWEBENCH_EVAL_TIMEOUT"]),
     },
@@ -317,34 +315,32 @@ echo "==> SWE-bench Verified agent run"
 echo "    model: $SWEBENCH_MODEL_NAME"
 echo "    instance: $SWEBENCH_INSTANCE_ID"
 echo "    output: $MODEL_DIR"
-if [[ "$(uname -m)" == "arm64" || "$(uname -m)" == "aarch64" ]]; then
-  echo "    note: ARM64 host detected. SWE-bench Docker support is experimental; official evaluation will use --namespace $SWEBENCH_EVAL_NAMESPACE."
-fi
+echo "    docker arch: $SWEBENCH_EVAL_ARCH"
+echo "    eval namespace: $SWEBENCH_EVAL_NAMESPACE"
 
 run_status=0
 
 if [[ "$SWEBENCH_SKIP_AGENT" == "1" ]]; then
   echo "==> Skipping agent phase; using existing predictions at $PREDICTIONS_PATH"
 else
-  mini_args=(
-    swebench
-    --output "$AGENT_DIR"
-    --subset "$SWEBENCH_DATASET"
+  agent_args=(
+    scripts/run_swebench_agent_vllm_one.py
+    --dataset "$SWEBENCH_DATASET"
     --split "$SWEBENCH_SPLIT"
-    --filter "^${SWEBENCH_INSTANCE_ID}$"
-    --workers "$SWEBENCH_MINI_WORKERS"
-    --model "hosted_vllm/$SWEBENCH_MODEL_NAME"
-    --config swebench.yaml
+    --instance-id "$SWEBENCH_INSTANCE_ID"
+    --output "$AGENT_DIR"
     --config "$CONFIG_PATH"
+    --served-model-name "$SWEBENCH_MODEL_NAME"
+    --arch "$SWEBENCH_EVAL_ARCH"
     --environment-class "$SWEBENCH_MINI_ENVIRONMENT_CLASS"
   )
-  if [[ "$SWEBENCH_REDO_AGENT" == "1" ]]; then
-    mini_args+=(--redo-existing)
+  if [[ "$SWEBENCH_FORCE_REBUILD_IMAGES" == "1" ]]; then
+    agent_args+=(--force-rebuild-images)
   fi
 
   phase_start="$(date +%s)"
   set +e
-  "${MINI_EXTRA_BIN}" "${mini_args[@]}" 2>&1 | tee "$AGENT_LOG"
+  "$PYTHON_BIN" "${agent_args[@]}" 2>&1 | tee "$AGENT_LOG"
   agent_code="${PIPESTATUS[0]}"
   set -e
   AGENT_SECONDS="$(( $(date +%s) - phase_start ))"
@@ -390,7 +386,7 @@ if [[ "$run_status" == "0" && "$SWEBENCH_SKIP_EVAL" == "1" ]]; then
 elif [[ "$run_status" == "0" ]]; then
   echo "==> Official SWE-bench evaluation"
   eval_args=(
-    -m swebench.harness.run_evaluation
+    scripts/swebench_run_evaluation_arch.py
     --dataset_name "$SWEBENCH_DATASET"
     --split "$SWEBENCH_SPLIT"
     --predictions_path "$PREDICTIONS_PATH"
@@ -401,8 +397,10 @@ elif [[ "$run_status" == "0" ]]; then
     --cache_level "$SWEBENCH_EVAL_CACHE_LEVEL"
     --clean "$SWEBENCH_EVAL_CLEAN"
     --namespace "$SWEBENCH_EVAL_NAMESPACE"
+    --arch "$SWEBENCH_EVAL_ARCH"
     --rewrite_reports "$SWEBENCH_REWRITE_EVAL_REPORTS"
   )
+  eval_args[0]="$ROOT_DIR/${eval_args[0]}"
 
   phase_start="$(date +%s)"
   set +e
