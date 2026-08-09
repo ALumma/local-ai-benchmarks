@@ -8,6 +8,12 @@ import platform
 from pathlib import Path
 from typing import Any
 
+from swebench_arm64 import adapt_test_spec_for_arm64
+from swebench_docker_platform import (
+    docker_platform_for_arch,
+    ensure_ubuntu_base_image,
+)
+
 
 LOGGER = logging.getLogger("run_swebench_agent_vllm_one")
 
@@ -41,11 +47,19 @@ def ensure_instance_image(
 
     client = docker.from_env()
     test_spec = make_test_spec(instance, namespace=None, arch=arch)
+    changes = adapt_test_spec_for_arm64(test_spec)
+    if changes:
+        LOGGER.info(
+            "Adapted %d Conda package pins for ARM64 in %s.",
+            changes,
+            test_spec.instance_id,
+        )
     existing = client.images.list(name=test_spec.instance_image_key)
     if existing and not force_rebuild:
         LOGGER.info("Using existing instance image: %s", test_spec.instance_image_key)
         return test_spec
 
+    ensure_ubuntu_base_image(arch, client)
     LOGGER.info("Building instance image: %s", test_spec.instance_image_key)
     successful, failed = build_instance_images(
         client=client,
@@ -57,12 +71,6 @@ def ensure_instance_image(
         raise RuntimeError(f"Failed to build SWE-bench image: {failed}")
     client.images.get(test_spec.instance_image_key)
     return test_spec
-
-
-def docker_platform_for_arch(arch: str) -> str:
-    if arch == "arm64":
-        return "linux/arm64/v8"
-    return "linux/x86_64"
 
 
 def build_environment_config(config: dict[str, Any], image: str, arch: str) -> dict[str, Any]:

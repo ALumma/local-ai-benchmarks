@@ -5,6 +5,9 @@ import argparse
 import sys
 from typing import Any
 
+from swebench_arm64 import adapt_test_spec_for_arm64
+from swebench_docker_platform import ensure_ubuntu_base_image
+
 
 def normalize_namespace(value: str | None) -> str | None:
     if value is None:
@@ -33,7 +36,14 @@ def patch_swebench_arch(arch: str) -> None:
 
     def make_test_spec_with_arch(instance: Any, *args: Any, **kwargs: Any) -> Any:
         kwargs["arch"] = arch
-        return original_make_test_spec(instance, *args, **kwargs)
+        test_spec = original_make_test_spec(instance, *args, **kwargs)
+        changes = adapt_test_spec_for_arm64(test_spec)
+        if changes:
+            print(
+                f"Adapted {changes} Conda package pins for ARM64 in "
+                f"{test_spec.instance_id}."
+            )
+        return test_spec
 
     test_spec_module.make_test_spec = make_test_spec_with_arch
     docker_build.make_test_spec = make_test_spec_with_arch
@@ -75,6 +85,9 @@ def str_to_bool(value: str | bool) -> bool:
 def main() -> int:
     args = parse_args()
     arch = auto_arch() if args.arch == "auto" else args.arch
+    namespace = normalize_namespace(args.namespace)
+    if namespace is None and not args.modal:
+        ensure_ubuntu_base_image(arch)
     patch_swebench_arch(arch)
 
     from swebench.harness.run_evaluation import main as run_main
@@ -91,7 +104,7 @@ def main() -> int:
         open_file_limit=args.open_file_limit,
         run_id=args.run_id,
         timeout=args.timeout,
-        namespace=normalize_namespace(args.namespace),
+        namespace=namespace,
         rewrite_reports=str_to_bool(args.rewrite_reports),
         modal=args.modal,
         instance_image_tag=args.instance_image_tag,

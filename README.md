@@ -223,8 +223,13 @@ scripts/swebench_verified_gold_check.sh
 
 On ARM64 hosts, the gold check and one-task runner force SWE-bench image
 generation to `arm64` and use `--namespace none`, which makes SWE-bench build
-local images instead of pulling x86_64 images. Override with
-`SWEBENCH_EVAL_ARCH=x86_64` only when you intentionally want Docker emulation.
+local images instead of pulling x86_64 images. Cached Conda environment files
+contain x86_64 build hashes; the runners retain package versions while removing
+those build hashes and selecting the ARM64 native linker package. The adaptation
+is recorded in `run_metadata.json`. This keeps runs on the Spark comparable with
+each other, but they are not byte-identical to official x86_64 leaderboard
+environments. Override with `SWEBENCH_EVAL_ARCH=x86_64` only when you
+intentionally want Docker emulation.
 
 The default comparison task is the mini-SWE-agent documented Verified example:
 

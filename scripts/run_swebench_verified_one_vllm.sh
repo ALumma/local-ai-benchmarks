@@ -305,6 +305,11 @@ payload = {
         "mini_environment_class": os.environ["SWEBENCH_MINI_ENVIRONMENT_CLASS"],
         "eval_namespace": os.environ["SWEBENCH_EVAL_NAMESPACE"],
         "eval_arch": os.environ["SWEBENCH_EVAL_ARCH"],
+        "arm64_conda_lock_adaptation": (
+            "version_pins_without_x86_build_hashes"
+            if os.environ["SWEBENCH_EVAL_ARCH"] == "arm64"
+            else None
+        ),
         "eval_cache_level": os.environ["SWEBENCH_EVAL_CACHE_LEVEL"],
         "eval_timeout": int(os.environ["SWEBENCH_EVAL_TIMEOUT"]),
     },
