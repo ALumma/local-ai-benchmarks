@@ -377,6 +377,23 @@ Starting the target NVIDIA batch with `SWEBENCH_BATCH_COUNT=30` skips imported
 completed tasks and retries failed or missing ones. Run Unsloth against the
 same target batch slug and count after NVIDIA reaches `30/30` with no errors.
 
+If some source tasks cannot build on ARM64, derive an explicitly recorded
+ARM64-runnable subset from tasks whose NVIDIA pipeline completed. This filters
+on run completion, not whether the patch resolved the task:
+
+```bash
+python3 scripts/derive_swebench_batch.py \
+  --source swebench-verified-50-qwen36-nvfp4-mtp2-v1 \
+  --target swebench-verified-30-qwen36-arm64-mtp2-v1 \
+  --count 30 \
+  --model bench-qwen36-35b-a3b-nvfp4-mtp \
+  --completed-only
+```
+
+Use this subset only for the local checkpoint comparison. Because it excludes
+tasks that failed the ARM64 pipeline, its accuracy is not directly comparable
+to an official random sample or SWE-bench leaderboard result.
+
 ## Expected Spark Setup
 
 From `~/Desktop/local-ai-benchmarks` on the Spark:

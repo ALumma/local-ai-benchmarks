@@ -13,6 +13,7 @@ from report_swebench_batch import aggregate_models
 from derive_swebench_batch import (
     copy_model_runs,
     derive_manifest,
+    select_completed_instances,
     validate_existing_manifest,
 )
 from run_swebench_verified_batch_vllm import select_instances, validate_manifest
@@ -165,6 +166,52 @@ class BatchDerivationTests(unittest.TestCase):
         existing["seed"] = 999
         with self.assertRaisesRegex(ValueError, "seed"):
             validate_existing_manifest(existing, expected)
+
+    def test_completed_filter_preserves_source_order(self) -> None:
+        instances = self.source_manifest["instances"]
+        model_slug = "model-a"
+        with tempfile.TemporaryDirectory() as temporary:
+            source_root = Path(temporary)
+            for index in [0, 2, 3, 4]:
+                metadata = (
+                    source_root
+                    / "runs"
+                    / instances[index]["instance_id"]
+                    / model_slug
+                    / "run_metadata.json"
+                )
+                metadata.parent.mkdir(parents=True)
+                metadata.write_text(
+                    '{"status":"completed"}\n', encoding="utf-8"
+                )
+
+            selected = select_completed_instances(
+                source_root=source_root,
+                source_instances=instances,
+                model_slug=model_slug,
+                count=3,
+            )
+
+        self.assertEqual(selected, [instances[0], instances[2], instances[3]])
+
+    def test_completed_filter_is_recorded_in_manifest(self) -> None:
+        instances = self.source_manifest["instances"]
+        derived = derive_manifest(
+            self.source_manifest,
+            source_slug="source-batch",
+            count=3,
+            selected_instances=[instances[0], instances[2], instances[3]],
+            completed_model="model-a",
+        )
+
+        self.assertEqual(
+            derived["selection_method"],
+            "source_order_filtered_by_completed_runs",
+        )
+        self.assertEqual(
+            derived["derived_from"]["filter"],
+            {"model": "model-a", "run_status": "completed"},
+        )
 
     def test_copy_model_runs_does_not_overwrite_target(self) -> None:
         instances = self.source_manifest["instances"][:3]
