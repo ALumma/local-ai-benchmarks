@@ -303,7 +303,7 @@ OpenAI-compatible vLLM path by default. Override it with
 `SWEBENCH_THINKING=true` only when you intentionally want to compare thinking
 mode behavior.
 
-### Fixed 50-Task Batch
+### Fixed SWE-bench Batch
 
 The batch runner creates one deterministic 50-task manifest, includes the
 validated `django__django-11099` task, and selects the other 49 by a stable hash
@@ -359,6 +359,23 @@ runs; per-task outputs remain separate under `runs/<instance>/<model>/`. The
 first model builds uncached Docker images, so use the batch primarily for
 correctness rather than direct timing comparisons. Expect the run to take
 several hours and consume substantial Docker storage.
+
+To reduce a completed or partially completed 50-task comparison to its first
+30 deterministically selected tasks without rerunning completed NVIDIA work,
+derive a smaller batch and import that model's selected task artifacts:
+
+```bash
+python3 scripts/derive_swebench_batch.py \
+  --source swebench-verified-50-qwen36-nvfp4-mtp2-v1 \
+  --target swebench-verified-30-qwen36-nvfp4-mtp2-v1 \
+  --count 30 \
+  --model bench-qwen36-35b-a3b-nvfp4-mtp
+```
+
+The target manifest is the ordered first 30 entries of the source manifest.
+Starting the target NVIDIA batch with `SWEBENCH_BATCH_COUNT=30` skips imported
+completed tasks and retries failed or missing ones. Run Unsloth against the
+same target batch slug and count after NVIDIA reaches `30/30` with no errors.
 
 ## Expected Spark Setup
 

@@ -10,6 +10,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from report_swebench_batch import aggregate_models
+from derive_swebench_batch import (
+    copy_model_runs,
+    derive_manifest,
+    validate_existing_manifest,
+)
 from run_swebench_verified_batch_vllm import select_instances, validate_manifest
 
 
@@ -111,6 +116,101 @@ class BatchAggregationTests(unittest.TestCase):
         self.assertEqual(summary["pending"], 47)
         self.assertEqual(summary["accuracy"], 1 / 50)
         self.assertEqual(summary["median_agent_seconds"], 90)
+
+
+class BatchDerivationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.source_manifest = {
+            "schema_version": 1,
+            "created_at": "2026-08-09T00:00:00Z",
+            "dataset": "dataset",
+            "split": "test",
+            "count": 5,
+            "seed": 123,
+            "selection_method": "required_then_sha256_rank",
+            "required_instances": ["repo__task-000"],
+            "instances": [
+                {"instance_id": f"repo__task-{index:03d}"}
+                for index in range(5)
+            ],
+        }
+
+    def test_derived_manifest_is_an_ordered_prefix(self) -> None:
+        derived = derive_manifest(
+            self.source_manifest,
+            source_slug="source-batch",
+            count=3,
+        )
+
+        self.assertEqual(derived["count"], 3)
+        self.assertEqual(
+            derived["instances"], self.source_manifest["instances"][:3]
+        )
+        self.assertEqual(
+            derived["derived_from"],
+            {"batch_slug": "source-batch", "count": 5},
+        )
+        self.assertEqual(self.source_manifest["count"], 5)
+
+    def test_existing_manifest_validation_ignores_creation_time(self) -> None:
+        expected = derive_manifest(
+            self.source_manifest,
+            source_slug="source-batch",
+            count=3,
+        )
+        existing = dict(expected)
+        existing["created_at"] = "later"
+
+        validate_existing_manifest(existing, expected)
+        existing["seed"] = 999
+        with self.assertRaisesRegex(ValueError, "seed"):
+            validate_existing_manifest(existing, expected)
+
+    def test_copy_model_runs_does_not_overwrite_target(self) -> None:
+        instances = self.source_manifest["instances"][:3]
+        model_slug = "model-a"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source_root = root / "source"
+            target_root = root / "target"
+            source_model = (
+                source_root
+                / "runs"
+                / instances[0]["instance_id"]
+                / model_slug
+            )
+            source_model.mkdir(parents=True)
+            (source_model / "run_metadata.json").write_text(
+                '{"status":"completed"}\n', encoding="utf-8"
+            )
+
+            counts = copy_model_runs(
+                source_root=source_root,
+                target_root=target_root,
+                instances=instances,
+                model_slug=model_slug,
+            )
+            self.assertEqual(counts, {"copied": 1, "existing": 0, "missing": 2})
+
+            target_metadata = (
+                target_root
+                / "runs"
+                / instances[0]["instance_id"]
+                / model_slug
+                / "run_metadata.json"
+            )
+            target_metadata.write_text('{"status":"newer"}\n', encoding="utf-8")
+            counts = copy_model_runs(
+                source_root=source_root,
+                target_root=target_root,
+                instances=instances,
+                model_slug=model_slug,
+            )
+            self.assertEqual(counts, {"copied": 0, "existing": 1, "missing": 2})
+            self.assertEqual(
+                target_metadata.read_text(encoding="utf-8"),
+                '{"status":"newer"}\n',
+            )
 
 
 if __name__ == "__main__":
