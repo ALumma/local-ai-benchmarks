@@ -68,6 +68,7 @@ require_command() {
 : "${SWEBENCH_MINI_WORKERS:=1}"
 : "${SWEBENCH_MINI_ENVIRONMENT_CLASS:=docker}"
 : "${SWEBENCH_EVAL_WORKERS:=1}"
+: "${SWEBENCH_AGENT_TIMEOUT:=1800}"
 : "${SWEBENCH_EVAL_TIMEOUT:=1800}"
 : "${SWEBENCH_EVAL_CACHE_LEVEL:=env}"
 : "${SWEBENCH_EVAL_CLEAN:=False}"
@@ -92,6 +93,10 @@ if [[ -z "${SWEBENCH_EVAL_ARCH+x}" ]]; then
 fi
 
 SWEBENCH_API_KEY="${SWEBENCH_API_KEY:-${VLLM_API_KEY:-${OPENAI_API_KEY:-EMPTY}}}"
+if [[ ! "$SWEBENCH_AGENT_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+  echo "SWEBENCH_AGENT_TIMEOUT must be a positive integer" >&2
+  exit 2
+fi
 THINKING_JSON="$(bool_json "$SWEBENCH_THINKING")" || exit 2
 MODEL_SLUG="$(sanitize_name "$SWEBENCH_MODEL_NAME")"
 RUN_DIR="$ROOT_DIR/$SWEBENCH_OUTPUT_ROOT/$SWEBENCH_RUN_SLUG"
@@ -259,6 +264,7 @@ write_metadata() {
   SWEBENCH_EVAL_NAMESPACE="$SWEBENCH_EVAL_NAMESPACE" \
   SWEBENCH_EVAL_ARCH="$SWEBENCH_EVAL_ARCH" \
   SWEBENCH_EVAL_CACHE_LEVEL="$SWEBENCH_EVAL_CACHE_LEVEL" \
+  SWEBENCH_AGENT_TIMEOUT="$SWEBENCH_AGENT_TIMEOUT" \
   SWEBENCH_EVAL_TIMEOUT="$SWEBENCH_EVAL_TIMEOUT" \
   AGENT_SECONDS="$AGENT_SECONDS" \
   EVAL_SECONDS="$EVAL_SECONDS" \
@@ -311,6 +317,7 @@ payload = {
             else None
         ),
         "eval_cache_level": os.environ["SWEBENCH_EVAL_CACHE_LEVEL"],
+        "agent_timeout": int(os.environ["SWEBENCH_AGENT_TIMEOUT"]),
         "eval_timeout": int(os.environ["SWEBENCH_EVAL_TIMEOUT"]),
     },
     "durations": {
@@ -352,6 +359,7 @@ else
     --output "$AGENT_DIR"
     --config "$CONFIG_PATH"
     --served-model-name "$SWEBENCH_MODEL_NAME"
+    --agent-timeout "$SWEBENCH_AGENT_TIMEOUT"
     --arch "$SWEBENCH_EVAL_ARCH"
     --environment-class "$SWEBENCH_MINI_ENVIRONMENT_CLASS"
   )
