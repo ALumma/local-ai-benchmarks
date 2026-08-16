@@ -311,6 +311,11 @@ with seed `20260809`. It runs sequentially at concurrency one. Completed tasks
 are skipped when the same command is restarted, while task-specific failures
 are recorded and the batch continues.
 
+Agent execution has a 30-minute wall-clock limit by default
+(`SWEBENCH_AGENT_TIMEOUT=1800`). A timed-out agent cleans up its Docker
+environment, is recorded as failed, and does not prevent the remaining batch
+instances from running.
+
 Run NVIDIA first:
 
 ```bash

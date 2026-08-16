@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
 import json
 import logging
 import platform
+import signal
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 from swebench_arm64 import adapt_test_spec_for_arm64
 from swebench_docker_platform import (
@@ -17,6 +19,29 @@ from swebench_repo_setup import remove_stale_repo_branch_hint
 
 
 LOGGER = logging.getLogger("run_swebench_agent_vllm_one")
+
+
+class AgentTimeoutError(TimeoutError):
+    pass
+
+
+@contextmanager
+def agent_wall_clock_timeout(seconds: float) -> Iterator[None]:
+    if seconds <= 0:
+        raise ValueError("Agent timeout must be positive")
+
+    def raise_timeout(_signum: int, _frame: Any) -> None:
+        raise AgentTimeoutError(
+            f"mini-swe-agent exceeded its {seconds:g}-second wall-clock timeout"
+        )
+
+    previous_handler = signal.signal(signal.SIGALRM, raise_timeout)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def auto_arch() -> str:
@@ -125,6 +150,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--config", action="append", default=[])
     parser.add_argument("--served-model-name", required=True)
+    parser.add_argument("--agent-timeout", type=int, default=1800)
     parser.add_argument("--arch", choices=["auto", "x86_64", "arm64"], default="auto")
     parser.add_argument("--environment-class", choices=["docker"], default="docker")
     parser.add_argument("--force-rebuild-images", action="store_true")
@@ -134,6 +160,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
     args = parse_args()
+    if args.agent_timeout <= 0:
+        raise SystemExit("Agent timeout must be a positive number of seconds")
     arch = auto_arch() if args.arch == "auto" else args.arch
 
     from minisweagent.agents import get_agent
@@ -174,7 +202,8 @@ def main() -> int:
             agent_config,
             default_type="default",
         )
-        info = agent.run(instance["problem_statement"])
+        with agent_wall_clock_timeout(args.agent_timeout):
+            info = agent.run(instance["problem_statement"])
     except Exception as error:
         run_error = error
         info = {"exit_status": f"error: {type(error).__name__}", "submission": ""}
